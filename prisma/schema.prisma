@@ -1,0 +1,33 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model TrainingDay {
+  id Int @id @default(autoincrement())
+  valid Boolean @default(true)
+  date DateTime
+}
+
+model Attendance {
+  id Int @id @default(autoincrement())
+  user_id String
+  time DateTime @default(now())
+}
+
+model User {
+  id String @id @default(uuid())
+  first_name String
+  last_name String
+  birth DateTime
+  type String @default("schueler")
+  join DateTime @default(now())
+  leave DateTime @default("2030-01-01T00:00:00.000Z")
+}

@@ -1,0 +1,21 @@
+-- CreateTable
+CREATE TABLE "TrainingDay" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "valid" BOOLEAN NOT NULL DEFAULT true,
+    "date" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "Attendance" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "user_id" INTEGER NOT NULL,
+    "time" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- CreateTable
+CREATE TABLE "User" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "first_name" TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
+    "birth" DATETIME NOT NULL
+);
