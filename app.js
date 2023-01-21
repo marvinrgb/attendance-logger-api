@@ -17,10 +17,6 @@ app.use(express.static('frontend'));
 
 app.use(logTable);
 
-app.get('/', (req, res) => {
-  console.log(__dirname + 'frontend/index.html');
-  res.sendFile(__dirname + 'frontend/index.html');
-})
 
 app.get('/users', async (req, res) => {
   try {
@@ -74,6 +70,30 @@ app.delete('/user', async (req, res) => {
   } catch (error) {
     res.sendStatus(500);
   }
+})
+
+app.delete('/attendance', async (req, res) => {
+  let today = new Date();
+  today.setHours(0, 0, 0, 0)
+  let tmrw = new Date()
+  tmrw.setDate(tmrw.getDate() + 1);
+  tmrw.setHours(0, 0, 0, 0)
+  await prisma.attendance.deleteMany({
+    where: {
+      AND: [
+        {
+          time: {
+            gte: today
+          }
+        },
+        {
+          time: {
+            lt: tmrw
+          }
+        }
+      ]
+    }
+  })
 })
 
 app.post('/attendance/:qrcodeid', async (req, res) => {
