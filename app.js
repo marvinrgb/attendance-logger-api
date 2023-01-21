@@ -3,11 +3,24 @@ const app = express();
 import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 const port = 3102;
+import { logTable } from './logger.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+
+const __dirname = path.dirname(__filename);
 
 import cors from 'cors';
 app.use(cors());
 app.use(express.json());
+app.use(express.static('frontend'));
 
+app.use(logTable);
+
+app.get('/', (req, res) => {
+  console.log(__dirname + 'frontend/index.html');
+  res.sendFile(__dirname + 'frontend/index.html');
+})
 
 app.get('/users', async (req, res) => {
   try {
@@ -93,7 +106,7 @@ app.post('/attendance/:qrcodeid', async (req, res) => {
   })
 
   if (old_attendances.length != 0) {
-    return res.json({"error": "user already has attendance for today"})
+    return res.status(406).json({"error": "user already has attendance for today"})
   }
 
   let db_response;
@@ -107,20 +120,31 @@ app.post('/attendance/:qrcodeid', async (req, res) => {
     console.log(error);
     res.sendStatus(500);
   }
-  res.json(db_response);
+
+  let user = await prisma.user.findFirst({
+    where: {
+      id: id
+    }
+  })
+
+  let data = {
+    'attendance': db_response,
+    'user': user
+  }
+
+  res.json(data);
 })
 
 app.get('/attendance', async (req, res) => { //dayformat: yyyy-mm-dd
+  // console.table(req.query)
   const day = req.query.day;
   const onlyPresentUsers = req.query.onlyPresentUsers;
   const displayTrainers = req.query.displayTrainers;
 
-  let today = new Date(day);
-  today.setHours(0, 0, 0, 0);
+  let today = new Date(Date.parse(day));
   let tmrw = new Date(today);
   tmrw.setDate(tmrw.getDate() + 1);
-  tmrw.setHours(0, 0, 0, 0);
-  console.log(today, tmrw);
+  // console.log(today, tmrw);
   let all_users = await prisma.user.findMany();
 
   let attendances;
@@ -145,13 +169,14 @@ app.get('/attendance', async (req, res) => { //dayformat: yyyy-mm-dd
     console.log(error);
     res.sendStatus(500);
   }
+  // console.log(attendances)
 
   let data = [];
 
   attendances.forEach((attendance) => {
-    let user = all_users.find((user) => user.id == attendance.id);
+    let user = all_users.find((user) => user.id == attendance.user_id);
     attendance.time.setSeconds(0, 0);
-
+    // console.log(user)
     let object = {
       "id" : user.id,
       "first_name" : user.first_name,
@@ -184,7 +209,14 @@ app.get('/attendance', async (req, res) => { //dayformat: yyyy-mm-dd
         "age" : ageFromBirth(new Date(user.birth)),
         "present" : false
       }
-      data.push(object);
+
+      if (user.type == "trainer") {
+        if (displayTrainers == 1) {
+          data.push(object);
+        }
+      } else {
+        data.push(object);
+      }
     })
   }
   res.setHeader('Access-Control-Allow-Origin', '*');

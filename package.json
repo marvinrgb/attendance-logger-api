@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "fillusers" : "node devscripts/fillUsers.js"
   },
   "repository": {
     "type": "git",
@@ -24,5 +25,8 @@
     "express": "^4.18.2",
     "prisma": "^4.9.0"
   },
-  "type": "module"
+  "type": "module",
+  "devDependencies": {
+    "@faker-js/faker": "^7.6.0"
+  }
 }
