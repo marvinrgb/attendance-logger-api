@@ -151,7 +151,7 @@ app.post('/attendance/:qrcodeid', async (req, res) => {
     'attendance': db_response,
     'user': user
   }
-
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.json(data);
 })
 
