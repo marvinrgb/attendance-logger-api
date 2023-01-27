@@ -106,26 +106,30 @@ app.post('/attendance/:qrcodeid', async (req, res) => {
   let tmrw = new Date()
   tmrw.setDate(tmrw.getDate() + 1);
   tmrw.setHours(0, 0, 0, 0)
-
-  let old_attendances = await prisma.attendance.findMany({
-    where: {
-      AND: [
-        {
-          time: {
-            gte: today
+  let old_attendances;
+  try {
+    old_attendances = await prisma.attendance.findMany({
+      where: {
+        AND: [
+          {
+            time: {
+              gte: today
+            }
+          },
+          {
+            time: {
+              lt: tmrw
+            }
+          },
+          {
+            user_id: id
           }
-        },
-        {
-          time: {
-            lt: tmrw
-          }
-        },
-        {
-          user_id: id
-        }
-      ]
-    }
-  })
+        ]
+      }
+    })
+  } catch (error) {
+    res.status(500).json({"error": "Database Reading Error"})
+  }
 
   if (old_attendances.length != 0) {
     return res.status(406).json({"error": "user already has attendance for today"})
@@ -140,7 +144,7 @@ app.post('/attendance/:qrcodeid', async (req, res) => {
     })
   } catch (error) {
     console.log(error);
-    res.sendStatus(500);
+    res.status(500).json({"error" : "Database writing error"});
   }
 
   let user = await prisma.user.findFirst({
@@ -189,7 +193,7 @@ app.get('/attendance', async (req, res) => { //dayformat: yyyy-mm-dd
     })
   } catch (error) {
     console.log(error);
-    res.sendStatus(500);
+    res.status(500).json({"error": "Database reading error"});
   }
   // console.log(attendances)
 
