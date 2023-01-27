@@ -8,6 +8,7 @@ const port = process.env.PORT;
 import { logTable } from './logger.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import xl from 'excel4node';
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = path.dirname(__filename);
@@ -255,7 +256,154 @@ function ageFromBirth(birth) {
   return Math.abs(ageDate.getFullYear() - 1970);
 }
 
+app.get('/excel', async (req, res) => {
+  const day = req.query.day;
+  
+  let today = new Date(Date.parse(day));
+  let tmrw = new Date(today);
+  tmrw.setDate(tmrw.getDate() + 1);
+  console.log(today, tmrw);
+  let all_users = await prisma.user.findMany();
 
+  let attendances;
+  try {
+    attendances = await prisma.attendance.findMany({
+      where: {
+        AND: [
+          {
+            time: {
+              gte: today
+            }
+          },
+          {
+            time: {
+              lt: tmrw
+            }
+          }
+        ]
+      }
+    })
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({"error": "Database reading error"});
+    return;
+  }
+  // console.log(attendances)
+
+  let data = [];
+
+  if (!attendances) {
+    res.json({"error" : "No attendances"});
+    return;
+  }
+
+  attendances.forEach((attendance) => {
+    let user = all_users.find((user) => user.id == attendance.user_id);
+    attendance.time.setSeconds(0, 0);
+    // console.log(user)
+    let object = {
+      "first_name" : user.first_name,
+      "last_name" : user.last_name,
+      "present" : "x"
+    }
+
+    data.push(object)
+
+    let index = all_users.indexOf(user);
+    if (index > -1) {
+      all_users.splice(index, 1);
+    }
+  })
+
+  all_users.forEach((user) => {
+    let object = {
+      "first_name" : user.first_name,
+      "last_name" : user.last_name,
+      "present" : "-"
+    }
+
+    data.push(object);
+  })
+
+
+  let wb = new xl.Workbook;
+  let ws = wb.addWorksheet('sheet');
+  let style = wb.createStyle({
+    font: {
+      color: '#222222',
+      size: 12
+    },
+    border: {
+      right: {
+        style: 'thin',
+        color: '#111111'
+      },
+      left: {
+        style: 'thin',
+        color: '#111111'
+      }
+    },
+    numberFormat: '$#,##0.00; ($#,##0.00); -',
+  })
+  let header_style = wb.createStyle({
+    font: {
+      color: '#222222',
+      size: 12,
+      bold: true
+    },
+    border: {
+      right: {
+        style: 'thin',
+        color: '#111111'
+      },
+      left: {
+        style: 'thin',
+        color: '#111111'
+      },
+      bottom: {
+        style: 'medium',
+        color: '#111111'
+      }
+    }
+  })
+  
+  ws.column(1).setWidth(18)
+  ws.column(2).setWidth(18)
+  ws.column(3).setWidth(12)
+
+  //Writing of Excel Header Line
+  let xlTS = xl.getExcelTS(today);
+  ws.cell(1, 1)
+  .string("Vorname")
+  .style(header_style);
+
+  ws.cell(1, 2)
+  .string("Nachname")
+  .style(header_style);
+
+  ws.cell(1, 3)
+  .string(`${today.getDate()}.${today.getMonth() + 1}.${today.getFullYear()}`)
+  .style(header_style);
+
+  //Writing of Excel Table
+  for (let i = 0; i < data.length; i++) {
+    let i2 = 1;
+    for (const prop in data[i]) {
+      ws.cell(i+2, i2)
+      .string(String(data[i][prop]))
+      .style(style);
+      i2++;
+    }
+  }
+
+
+  // ws.cell(1, 2)
+  //   .string('tessst')
+  //   .style(style)
+
+  wb.write('excel.xlsx', res)
+
+})
 
 
 app.listen(port, () => {
