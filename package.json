@@ -5,9 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon app.js",
-    "fillusers" : "node devscripts/fillUsers.js",
-    "start" : "node app.js",
-    "build" : "npx prisma generate"
+    "fillusers": "node devscripts/fillUsers.js",
+    "start": "node app.js",
+    "build": "npx prisma generate"
   },
   "repository": {
     "type": "git",
@@ -23,6 +23,7 @@
   "dependencies": {
     "@prisma/client": "^4.9.0",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "prisma": "^4.9.0"
   },
