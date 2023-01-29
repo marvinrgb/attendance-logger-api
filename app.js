@@ -256,13 +256,11 @@ function ageFromBirth(birth) {
   return Math.abs(ageDate.getFullYear() - 1970);
 }
 
-app.get('/excel', async (req, res) => {
-  const day = req.query.day;
-  
+async function attendancesFromDate(date) { //date as yyyy-mm-dd
+  let day = date;
   let today = new Date(Date.parse(day));
   let tmrw = new Date(today);
   tmrw.setDate(tmrw.getDate() + 1);
-  console.log(today, tmrw);
   let all_users = await prisma.user.findMany();
 
   let attendances;
@@ -288,7 +286,6 @@ app.get('/excel', async (req, res) => {
     res.status(500).json({"error": "Database reading error"});
     return;
   }
-  // console.log(attendances)
 
   let data = [];
 
@@ -302,9 +299,11 @@ app.get('/excel', async (req, res) => {
     attendance.time.setSeconds(0, 0);
     // console.log(user)
     let object = {
+      "id" : user.id,
       "first_name" : user.first_name,
       "last_name" : user.last_name,
-      "present" : "x"
+      "present" : "x",
+      "date" : today
     }
 
     data.push(object)
@@ -317,14 +316,74 @@ app.get('/excel', async (req, res) => {
 
   all_users.forEach((user) => {
     let object = {
+      "id" : user.id,
       "first_name" : user.first_name,
       "last_name" : user.last_name,
-      "present" : "-"
+      "present" : "-",
+      "date" : today
     }
 
     data.push(object);
   })
+  return data;
+}
 
+function datediff(first, second) {        
+  return Math.round((second - first) / (1000 * 60 * 60 * 24));
+}
+
+function sortBigData(bigdata) {
+  let neu_data = [];
+  for (let i = 0; i < bigdata.length; i++) {
+    for (let i2 = 0; i2 < bigdata[i].length; i2++) {
+      let element = bigdata[i][i2];
+      if (!(neu_data.includes(neu_data.find((value) => value.id == element.id)))) {
+        element.dates = {};
+        element.dates[element.date.toISOString()] = element.present;
+        delete element.present;
+        neu_data.push(element);
+      } else {
+        let index = neu_data.indexOf(neu_data.find((value) => value.id == element.id));
+        neu_data[index].dates[element.date.toISOString()] = element.present;
+        delete neu_data[index].present;
+      }
+    }
+    // console.log(neu_data)
+  }
+  neu_data.sort(compare)
+  return neu_data;
+}
+
+function compare(a, b) {
+  if ( a.last_name > b.last_name ) {
+    return 1;
+  }
+  if ( a.last_name < b.last_name ) {
+    return -1;
+  }
+  return 0;
+}
+
+
+app.get('/excel', async (req, res) => {
+  const day_start = new Date(Date.parse(req.query.day_start));
+  const day_end = new Date(Date.parse(req.query.day_end));
+
+  let amount_days = datediff(day_start, day_end) + 1;
+  
+  let bigdata = [];
+  for (let i = 0; i < amount_days; i++) {
+    let today = new Date(Date.parse(day_start));
+    today.setDate(today.getDate() + i);
+    bigdata.push(await attendancesFromDate(today));
+  }
+  // res.json(sortBigData(bigdata));
+  // return;
+  let bigdata_sorted = sortBigData(bigdata);
+
+  // let today = new Date(Date.parse(day_start));
+  
+  // let data = await attendancesFromDate(day);
 
   let wb = new xl.Workbook;
   let ws = wb.addWorksheet('sheet');
@@ -372,7 +431,6 @@ app.get('/excel', async (req, res) => {
   ws.column(3).setWidth(12)
 
   //Writing of Excel Header Line
-  let xlTS = xl.getExcelTS(today);
   ws.cell(1, 1)
   .string("Vorname")
   .style(header_style);
@@ -381,30 +439,46 @@ app.get('/excel', async (req, res) => {
   .string("Nachname")
   .style(header_style);
 
-  ws.cell(1, 3)
-  .string(`${today.getDate()}.${today.getMonth() + 1}.${today.getFullYear()}`)
-  .style(header_style);
+  let header_iter = 0;
+  for (const cur_datestring in bigdata_sorted[0].dates) {
+    let cur_date = new Date(Date.parse(cur_datestring));
+    ws.cell(1, header_iter + 3)
+    .string(`${cur_date.getDate()}.${cur_date.getMonth() + 1}.${cur_date.getFullYear()}`)
+    .style(header_style);
+    header_iter++;
+  }
 
+
+  
   //Writing of Excel Table
-  for (let i = 0; i < data.length; i++) {
+  for (let i = 0; i < bigdata_sorted.length; i++) {
     let i2 = 1;
-    for (const prop in data[i]) {
-      ws.cell(i+2, i2)
-      .string(String(data[i][prop]))
-      .style(style);
+    for (const prop in bigdata_sorted[i]) {
+      if (prop == 'id') continue
+      if (prop == 'date') continue
+      if (prop != 'dates') {
+        ws.cell(i+2, i2)
+        .string(String(bigdata_sorted[i][prop]))
+        .style(style);
+      } else {
+        let i3 = 0;
+        for (const date in bigdata_sorted[i]['dates']) {
+          ws.cell(i+2, i2 + i3)
+          .string(String(bigdata_sorted[i]['dates'][date]))
+          .style(style);
+          i3++;
+        }
+      }
       i2++;
     }
   }
 
-
-  // ws.cell(1, 2)
-  //   .string('tessst')
-  //   .style(style)
-
   wb.write('excel.xlsx', res)
-
 })
 
+function l(x) {
+  console.log(x)
+}
 
 app.listen(port, () => {
   console.log(`Running on port ${port}`);
