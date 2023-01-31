@@ -21,6 +21,7 @@ app.use(express.static('frontend'));
 app.use(logTable);
 
 
+
 app.get('/users', async (req, res) => {
   try {
     let db_response = await prisma.user.findMany();
@@ -30,50 +31,6 @@ app.get('/users', async (req, res) => {
   }
 })
 
-// user object mit vorname, nachname, birth, type
-app.post('/user', async (req, res) => {
-  let data = req.body;
-  try {
-    let db_response = await prisma.user.create({
-      data: data
-    });
-    res.json(db_response);
-  } catch (error) {
-    console.log(error);
-    res.sendStatus(500);
-  }
-})
-
-// -> user object mit id und was man updaten möchte
-app.put('/user', async (req, res) => {
-  let data = req.body;
-  try {
-    let db_response = await prisma.user.update({
-      where: {
-        id: data.id
-      },
-      data: data
-    });
-    res.json(db_response);
-  } catch (error) {
-    res.sendStatus(500);
-  }
-})
-
-// -> nur id
-app.delete('/user', async (req, res) => {
-  let data = req.body;
-  try {
-    let db_response = await prisma.user.update({
-      where: {
-        id: data
-      }
-    });
-    res.json(db_response);
-  } catch (error) {
-    res.sendStatus(500);
-  }
-})
 
 app.delete('/attendance', async (req, res) => {
   let today = new Date();
@@ -250,6 +207,49 @@ app.get('/attendance', async (req, res) => { //dayformat: yyyy-mm-dd
   res.json(data);
 })
 
+app.get('/attendance_new', async (req, res) => {
+  const day_start = new Date(Date.parse(req.query.day_start));
+  const day_end = new Date(Date.parse(req.query.day_end));
+
+  let amount_days = datediff(day_start, day_end) + 1;
+  
+  let bigdata = [];
+  for (let i = 0; i < amount_days; i++) {
+    let today = new Date(Date.parse(day_start));
+    today.setDate(today.getDate() + i);
+    bigdata.push(await attendancesFromDate(today));
+  }
+  
+  let bigdata_sorted = sortBigData(bigdata);
+
+  let data_new = [];
+  console.log(bigdata_sorted);
+
+  bigdata_sorted.forEach((value) => {
+
+    let columns = {
+      "first_name" : value.first_name,
+      "last_name" : value.last_name
+    }
+
+    for (const dateval in value.dates) {
+      columns[dateval] = value.dates[dateval];
+    }
+
+    data_new.push({
+      "start_date" : value.date,
+      "amount_days" : Object.keys(value.dates).length,
+      "columns" : columns
+    })
+  })
+
+
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.json(data_new);
+})
+
+
+
 function ageFromBirth(birth) {
   let ageDifMs = Date.now() - birth.getTime();
   let ageDate = new Date(ageDifMs);
@@ -364,7 +364,6 @@ function compare(a, b) {
   return 0;
 }
 
-
 app.get('/excel', async (req, res) => {
   const day_start = new Date(Date.parse(req.query.day_start));
   const day_end = new Date(Date.parse(req.query.day_end));
@@ -377,13 +376,8 @@ app.get('/excel', async (req, res) => {
     today.setDate(today.getDate() + i);
     bigdata.push(await attendancesFromDate(today));
   }
-  // res.json(sortBigData(bigdata));
-  // return;
-  let bigdata_sorted = sortBigData(bigdata);
-
-  // let today = new Date(Date.parse(day_start));
   
-  // let data = await attendancesFromDate(day);
+  let bigdata_sorted = sortBigData(bigdata);
 
   let wb = new xl.Workbook;
   let ws = wb.addWorksheet('sheet');
