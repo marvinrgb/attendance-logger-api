@@ -18,7 +18,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('frontend'));
 
-app.use(logTable);
+// app.use(logTable);
 
 
 
@@ -223,7 +223,8 @@ app.get('/attendance_new', async (req, res) => {
   let bigdata_sorted = sortBigData(bigdata);
 
   let data_new = [];
-  console.log(bigdata_sorted);
+  
+
 
   bigdata_sorted.forEach((value) => {
 
@@ -243,6 +244,21 @@ app.get('/attendance_new', async (req, res) => {
     })
   })
 
+  let cols = data_new[0].columns
+  let summed_attendance = {};
+  for (const key in cols) {
+    let amount_at;
+    if (key == 'first_name' || key == 'last_name') {
+      summed_attendance[key] = ""
+    } else {
+      amount_at = data_new.filter((val) => val.columns[key] == 'x')
+      summed_attendance[key] = amount_at.length
+    }
+  }
+  
+  for (let i = 0; i < data_new.length; i++) {
+    data_new[i].sum = summed_attendance;
+  }
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.json(data_new);
