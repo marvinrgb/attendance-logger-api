@@ -360,22 +360,26 @@ async function attendancesFromDate(date) { //date as yyyy-mm-dd
   }
 
   attendances.forEach((attendance) => {
-    let user = all_users.find((user) => user.id == attendance.user_id);
-    attendance.time.setSeconds(0, 0);
-    // console.log(user)
-    let object = {
-      "id" : user.id,
-      "first_name" : user.first_name,
-      "last_name" : user.last_name,
-      "present" : "x",
-      "date" : today
-    }
-
-    data.push(object)
-
-    let index = all_users.indexOf(user);
-    if (index > -1) {
-      all_users.splice(index, 1);
+    try {
+      let user = all_users.find((user) => user.id == attendance.user_id);
+      attendance.time.setSeconds(0, 0);
+      // console.log(user)
+      let object = {
+        "id" : user.id,
+        "first_name" : user.first_name,
+        "last_name" : user.last_name,
+        "present" : "x",
+        "date" : today
+      }
+  
+      data.push(object)
+  
+      let index = all_users.indexOf(user);
+      if (index > -1) {
+        all_users.splice(index, 1);
+      }
+    } catch (error) {
+      console.log('[warn] user for attendance deleted')
     }
   })
 
