@@ -21,15 +21,63 @@ app.use(express.static('frontend'));
 // app.use(logTable);
 
 
-
 app.get('/users', async (req, res) => {
   try {
     let db_response = await prisma.user.findMany();
+    db_response.sort(compare)
     res.json(db_response);
   } catch (error) {
     res.sendStatus(500);
   }
 })
+
+// user object mit vorname, nachname, birth, type
+app.post('/user', async (req, res) => {
+  let data = req.body;
+  console.log(data)
+  try {
+    let db_response = await prisma.user.create({
+      data: data
+    });
+    res.json(db_response);
+  } catch (error) {
+    console.log(error);
+    res.sendStatus(500);
+  }
+})
+
+// -> user object mit id und was man updaten möchte
+app.put('/user', async (req, res) => {
+  let data = req.body;
+  try {
+    let db_response = await prisma.user.update({
+      where: {
+        id: data.id
+      },
+      data: data
+    });
+    res.json(db_response);
+  } catch (error) {
+    res.sendStatus(500);
+  }
+})
+
+// -> nur id
+app.delete('/user/:id', async (req, res) => {
+  let data = req.params.id;
+  try {
+    let db_response = await prisma.user.delete({
+      where: {
+        id: data
+      }
+    });
+    res.json(db_response);
+  } catch (error) {
+    res.status(500).send(error);
+  }
+})
+
+
 
 
 app.delete('/attendance', async (req, res) => {
@@ -259,6 +307,7 @@ app.get('/attendance_new', async (req, res) => {
   for (let i = 0; i < data_new.length; i++) {
     data_new[i].sum = summed_attendance;
   }
+  
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.json(data_new);
