@@ -9,6 +9,9 @@ import { logTable } from './logger.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import xl from 'excel4node';
+import fetch from 'node-fetch';
+import jwt from 'express-jwt';
+import { expressJwtSecret } from 'jwks-rsa';
 const __filename = fileURLToPath(import.meta.url);
 
 const __dirname = path.dirname(__filename);
@@ -19,6 +22,35 @@ app.use(express.json());
 app.use(express.static('frontend'));
 
 // app.use(logTable);
+
+
+function checkAuth(req) {
+  if(!req.user) {
+    return false
+  }
+  return true
+}
+
+let jwksUrl = "";
+
+let jwtConfig;
+
+try {
+  let oidResponse = await fetch(`https://oauth.id.jumpcloud.com/.well-known/openid-configuration`)
+  let oidBody = await oidResponse.json();
+      jwksUrl = oidBody.jwks_uri;
+      console.log("Received OIDC config");
+      jwtConfig = {
+          algorithms: ["RS256"],
+          secret: expressJwtSecret({
+              jwksUri: jwksUrl
+          }),
+          // issuer: 'http://localhost:8082/auth/realms/OIDC-Demo'
+      };
+} catch (error) {
+  console.error(error);
+  process.exit();
+}
 
 
 app.get('/users', async (req, res) => {
